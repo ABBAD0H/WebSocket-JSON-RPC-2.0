@@ -1,0 +1,71 @@
+// Подключение к WebSocket серверу
+let socket = new WebSocket('ws://localhost:12345');
+
+// Обработка событий подключения
+socket.onopen = function(event) {
+    console.log("Connected to WebSocket server.");
+
+    // Создание нового объекта
+    socket.send(JSON.stringify({
+        jsonrpc: "2.0",
+        method: "createObject",
+        params: {},
+        id: 1
+    }));
+};
+
+// Обработка сообщений от сервера
+socket.onmessage = function(event) {
+    console.log("Message from server:", event.data);
+
+    let response = JSON.parse(event.data);
+
+    if (response.id === 1) {
+        console.log("Object created with ID:", response.result);
+        
+        // Получение списка всех объектов
+        socket.send(JSON.stringify({
+            jsonrpc: "2.0",
+            method: "listObjects",
+            params: {},
+            id: 2
+        }));
+    } else if (response.id === 2) {
+        console.log("List of objects:", response.result);
+
+        let objectId = Object.keys(response.result)[0];
+        if (objectId) {
+            socket.send(JSON.stringify({
+                jsonrpc: "2.0",
+                method: "deleteObject",
+                params: { id: parseInt(objectId, 10) },
+                id: 3
+            }));
+        } else {
+            console.error("No object ID found to delete.");
+        }
+    } else if (response.id === 3) {
+        console.log("Object deletion result:", response.result);
+
+        socket.send(JSON.stringify({
+            jsonrpc: "2.0",
+            method: "listObjects",
+            params: {},
+            id: 4
+        }));
+    } else if (response.id === 4) {
+        console.log("List of objects after deletion:", response.result);
+    } else {
+        console.error("Unexpected response ID:", response.id);
+    }
+};
+
+// Обработка закрытия соединения
+socket.onclose = function(event) {
+    console.log("WebSocket connection closed.");
+};
+
+// Обработка ошибок
+socket.onerror = function(event) {
+    console.error("WebSocket Error:", event);
+};
